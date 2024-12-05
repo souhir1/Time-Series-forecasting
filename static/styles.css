@@ -1,52 +1,137 @@
+/* General Styles */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f9;
-    text-align: center;
+    background-color: #121212;
+    color: #ffffff;
 }
 
-.container {
-    max-width: 800px;
-    margin: auto;
+.header {
+    display: flex;
+    align-items: center; /* Vertically center the content */
+    justify-content: center; /* Horizontally center the content */
     padding: 20px;
+    background-color: #1f1e1e;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
 }
 
-header {
-    margin-bottom: 20px;
+.header img {
+    width: 370px; /* Increase logo size */
+    height: 150px; /* Keep the logo aspect ratio */
+    margin-right: 20px; /* Space between the logo and the text */
 }
 
-.logo {
-    width: 100px;
-    height: auto;
+.header-content {
+    display: flex;
+    flex-direction: column; /* Stack the title and text */
+    align-items: center; /* Center align the text */
+    text-align: center; /* Center the text alignment */
 }
 
-h1 {
-    font-size: 2rem;
-    color: #333;
-    text-align: center;
+.header h1 {
+    color: #ffffff;
+    font-size: 40px; /* Increased font size for the title */
+    margin: 1; /* Remove margin to tighten spacing */
+}
+
+.header-text {
+    color: #cccccc;
+    font-size: 30px; /* Increased font size for the description */
+    margin-top: 5px; /* Slight space between title and description */
+}
+
+
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    gap: 20px;
 }
 
 button {
-    padding: 10px 20px;
-    font-size: 1rem;
-    color: white;
-    background-color: #007BFF;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-bottom: 20px;
+    padding: 20px 40px; /* Increase padding for larger buttons */
+    font-size: 20px; /* Increase font size for better readability */
+    font-weight: bold; /* Bold text for emphasis */
+    color: white; /* Text color */
+    background-color: #007bff; /* Blue button color */
+    border: none; /* Remove default border */
+    border-radius: 15px; /* Rounded corners for a modern look */
+    cursor: pointer; /* Pointer cursor on hover */
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.3); /* Add shadow for elevation */
+    transition: all 0.3s ease; /* Smooth transitions */
+    margin: 0 10px; /* Add spacing between buttons */
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: #1270d4; /* Darker shade for hover effect */
+    transform: scale(1.1); /* Slightly enlarge the button on hover */
+    box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.4); /* Enhance shadow on hover */
 }
 
-#dashboard {
-    margin-top: 20px;
+button:hover {
+    background-color: #0288d1;
+}
+
+#loadingSpinner {
+    display: none;
+    margin: 20px auto;
+    border: 8px solid #2B2F3E;
+    border-top: 8px solid #00bcd4;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.main-container {
+    display: flex;
+    gap: 20px;
+    max-width: 100%;
+    height: calc(100vh - 150px); /* Full height except header and buttons */
+    padding: 20px;
+}
+
+.left-panel {
+    flex: 1;
+    background-color: #2B2F3E;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+}
+
+.right-panel {
+    flex: 3; /* Bigger than the left panel */
+    background-color: #1E1E1E;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 #chart {
     width: 100%;
-    height: 400px;
+    height: 100%;
+    background-color: #1E1E1E;
+    border-radius: 10px;
+}
+
+.footer {
+    text-align: center;
+    padding: 10px;
+    margin-top: 20px;
+    color: #999;
+    font-size: 14px;
+    background-color: #1E1E1E;
+    box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.3);
 }

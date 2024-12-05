@@ -1,103 +1,191 @@
 document.addEventListener('DOMContentLoaded', () => {
     const predictButton = document.getElementById('predictButton');
-    const dashboardDiv = document.getElementById('dashboard');
+    const downloadButton = document.getElementById('downloadButton');
+    const loadingSpinner = document.getElementById('loadingSpinner');
     const chartDiv = document.getElementById('chart');
     const statsDiv = document.getElementById('stats');
-    const loadingSpinner = document.getElementById('loadingSpinner');
+    const radarDiv = document.getElementById('radarChart'); // Ensure this exists in the DOM
+
+    function showError(message) {
+        console.error(message);
+        statsDiv.innerHTML = `<p style="color: red;">${message}</p>`;
+    }
 
     predictButton.addEventListener('click', async () => {
-        // Show the loading spinner
         loadingSpinner.style.display = 'block';
+        statsDiv.innerHTML = '';
+        chartDiv.innerHTML = '';
+        radarDiv.innerHTML = ''; // Clear radar chart content
 
         try {
-            // Fetch predictions from the API
             const response = await fetch('http://127.0.0.1:5020/predict', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
             });
 
-            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-            const predictions = await response.json();
-
-            if (!Array.isArray(predictions)) {
-                throw new Error("Invalid response format. Expected an array of predictions.");
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status} - ${response.statusText}`);
             }
 
-            // Extract data for the plots
-            const timestamps = predictions.map(p => new Date(p.Timestamp)); // Parse timestamps
-            const values = predictions.map(p => p.Prediction);
+            const predictions = await response.json();
 
-            // Group data by date
-            const groupedData = timestamps.reduce((acc, timestamp, index) => {
-                const date = timestamp.toISOString().split("T")[0]; // Extract the date part (YYYY-MM-DD)
-                if (!acc[date]) acc[date] = [];
-                acc[date].push({ timestamp, value: values[index] });
-                return acc;
-            }, {});
+            if (!Array.isArray(predictions) || predictions.length === 0) {
+                throw new Error('Invalid or empty response from API.');
+            }
 
-            // Calculate daily min and max
-            const dailyStats = Object.entries(groupedData).map(([date, entries]) => {
-                const minEntry = entries.reduce((min, curr) => (curr.value < min.value ? curr : min), entries[0]);
-                const maxEntry = entries.reduce((max, curr) => (curr.value > max.value ? curr : max), entries[0]);
-                return {
-                    date,
-                    min: { value: minEntry.value.toFixed(2), timestamp: minEntry.timestamp.toLocaleString() },
-                    max: { value: maxEntry.value.toFixed(2), timestamp: maxEntry.timestamp.toLocaleString() }
-                };
+            const timestamps = predictions.map((p) => new Date(p.Timestamp));
+            const values = predictions.map((p) => p.Prediction);
+
+            // Group data by time range (e.g., morning, afternoon, evening)
+            const timeRanges = {
+                Morning: [],
+                Afternoon: [],
+                Evening: [],
+                Night: []
+            };
+
+            timestamps.forEach((timestamp, index) => {
+                const hour = timestamp.getHours();
+                if (hour >= 6 && hour < 12) {
+                    timeRanges.Morning.push(values[index]);
+                } else if (hour >= 12 && hour < 18) {
+                    timeRanges.Afternoon.push(values[index]);
+                } else if (hour >= 18 && hour < 24) {
+                    timeRanges.Evening.push(values[index]);
+                } else {
+                    timeRanges.Night.push(values[index]);
+                }
             });
 
-            // Select the min and max for the first available day
-            const { min, max } = dailyStats[0] || { min: null, max: null };
+            const radarData = {
+                Morning: timeRanges.Morning.reduce((a, b) => a + b, 0) / (timeRanges.Morning.length || 1),
+                Afternoon: timeRanges.Afternoon.reduce((a, b) => a + b, 0) / (timeRanges.Afternoon.length || 1),
+                Evening: timeRanges.Evening.reduce((a, b) => a + b, 0) / (timeRanges.Evening.length || 1),
+                Night: timeRanges.Night.reduce((a, b) => a + b, 0) / (timeRanges.Night.length || 1),
+            };
 
-            // Compute global statistics
-            const mean = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2);
-            const median = [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)].toFixed(2);
+            // Plot radar chart
+           // Plot radar chart
+            Plotly.newPlot(radarDiv, [{
+                type: 'scatterpolar',
+                r: [
+                    radarData.Morning * 100,
+                    radarData.Afternoon * 100,
+                    radarData.Evening * 100,
+                    radarData.Night * 100,
+                    radarData.Morning * 100 // Close the loop
+                ],
+                theta: ['Morning', 'Afternoon', 'Evening', 'Night', 'Morning'],
+                fill: 'toself',
+                name: 'Occupancy (%)',
+                line: { color: '#00bcd4', width: 2 } // Make lines slightly thicker
+            }], {
+                polar: {
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 100],
+                        tickfont: {
+                            size: 16, // Larger font size for radial axis
+                            color: '#E0E0E0'
+                        },
+                        title: {
+                            text: 'Occupancy (%)',
+                            font: {
+                                size: 20, // Add title to radial axis and make it bigger
+                                color: '#E0E0E0'
+                            }
+                        }
+                    },
+                    angularaxis: {
+                        tickfont: {
+                            size: 16, // Larger font size for angular axis
+                            color: '#E0E0E0'
+                        }
+                    }
+                },
+                title: {
+                    text: 'Occupancy by Time Range',
+                    font: {
+                        size: 20 , // Larger title font size
+                        color: '#E0E0E0'
+                    }
+                },
+                height: 500, // Increased height
+                width: 500,  // Increased width
+                paper_bgcolor: '#1E1E1E',
+                plot_bgcolor: '#2B2F3E'
+            });
 
-            // Render prediction plot with updated background colors
+
+            // Plot main chart
             Plotly.newPlot(chartDiv, [{
                 x: timestamps,
                 y: values,
                 mode: 'lines+markers',
-                line: { color: '#2A9DF4', width: 3 },
-                marker: { size: 6, color: '#F4A261' }
+                line: { color: '#2A9DF4', width: 4},
+                marker: { size: 8, color: '#F4A261' },
             }], {
-                title: 'Parking Occupancy Forecast for Tomorrow',
+                title: {
+                    text: 'Parking Occupancy Forecast for Tomorrow',
+                    font: {
+                        size: 28,
+                        color: '#E0E0E0',
+                    }
+                },
                 xaxis: {
-                    title: 'Timestamp',
+                    title: {
+                        text: 'Timestamp',
+                        font: {
+                            size: 18,
+                            color: '#E0E0E0',
+                        }
+                    },
+                    tickfont: {
+                        size: 16,
+                        color: '#E0E0E0',
+                    },
+                    showgrid: true,
+                    gridcolor: '#444',
                     type: 'date',
-                    color: '#E0E0E0' // Axis text color
                 },
                 yaxis: {
-                    title: 'Percent Occupied (%)',
+                    title: {
+                        text: 'Percent Occupied (%)',
+                        font: {
+                            size: 18,
+                            color: '#E0E0E0',
+                        }
+                    },
+                    tickfont: {
+                        size: 17,
+                        color: '#E0E0E0',
+                    },
                     range: [0, 1],
-                    color: '#E0E0E0' // Axis text color
+                    showgrid: true,
+                    gridcolor: '#444',
                 },
                 hovermode: 'x unified',
-                paper_bgcolor: '#1E1E1E', // Background of the entire chart
-                plot_bgcolor: '#2B2F3E', // Background of the plot area
+                paper_bgcolor: '#1E1E1E',
+                plot_bgcolor: '#2B2F3E',
             });
 
-            // Render statistics details
+            // Display statistics
             statsDiv.innerHTML = `
-            <h3>Parking Occupancy Insights</h3>
-            <div style="text-align: center; margin: 20px 0;">
-                <p><b>🅿️ Average Occupancy:</b> Tomorrow, parking is expected to be <b>${(mean * 100).toFixed(0)}%</b> full on average.</p>
-                <p><b>🟢 Best Time to Park:</b> The best time to find parking is <b>${min?.timestamp || "Unknown"}</b>, with the lowest occupancy at just <b>${(min?.value * 100 || 0).toFixed(0)}%</b>.</p>
-                <p><b>🔴 Busiest Time:</b> Parking is expected to be fullest at <b>${max?.timestamp || "Unknown"}</b>, reaching <b>${(max?.value * 100 || 0).toFixed(0)}%</b> occupancy.</p>
-                <p><b>📊 Median Occupancy:</b> Typically, around <b>${(median * 100).toFixed(0)}%</b> of the parking lot will be occupied.</p>
-            </div>
-            <p style="text-align: center; font-size: 0.9rem; color: #ccc;">Plan your day to avoid peak hours and enjoy a stress-free parking experience!</p>
+                <div style="text-align: center; margin: 20px 0; font-size: 18px;">
+                    <p><b>🅿️ Average Occupancy:</b> Tomorrow, parking is expected to be <b>${(values.reduce((a, b) => a + b, 0) / values.length * 100).toFixed(0)}%</b> full on average.</p>
+                    <p><b>🟢 Best Time to Park:</b> The best time to find parking is <b>${timestamps[values.indexOf(Math.min(...values))].toLocaleString()}</b>, with the lowest occupancy at just <b>${(Math.min(...values) * 100).toFixed(0)}%</b>.</p>
+                    <p><b>🔴 Busiest Time:</b> Parking is expected to be fullest at <b>${timestamps[values.indexOf(Math.max(...values))].toLocaleString()}</b>, reaching <b>${(Math.max(...values) * 100).toFixed(0)}%</b> occupancy.</p>
+                    <p><b>📊 Median Occupancy:</b> Typically, around <b>${(values.sort((a, b) => a - b)[Math.floor(values.length / 2)] * 100).toFixed(0)}%</b> of the parking lot will be occupied.</p>
+                </div>
             `;
-
-            // Show the dashboard
-            dashboardDiv.style.display = 'block';
         } catch (error) {
-            console.error('Error:', error);
-            alert('An error occurred while fetching predictions. Please check the console for details.');
+            showError(`An error occurred: ${error.message}`);
         } finally {
-            // Hide the loading spinner
             loadingSpinner.style.display = 'none';
         }
     });
-});
 
+    downloadButton.addEventListener('click', () => {
+        window.location.href = 'http://127.0.0.1:5020/download';
+    });
+});
